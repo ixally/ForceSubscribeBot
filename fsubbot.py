@@ -1,10 +1,10 @@
-import config
+import Config
 import logging 
 import asyncio
 import time
 import requests
-from pyrogram import Client
-from pyrogram.errors import FloodWait
+from pyrogram import Client, idle
+from pyrogram.errors import Floodwait, ApiIdInvalid, ApiIdPublishedFlood, AccessTokenInvalid
 
 logging.basicConfig(
     level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
