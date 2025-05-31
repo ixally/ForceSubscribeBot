@@ -1,8 +1,23 @@
 import Config
 import logging
+import time
+import requests
 from pyrogram import Client, idle
 from pyrogram.errors import ApiIdInvalid, ApiIdPublishedFlood, AccessTokenInvalid
 
+
+def sync_time():
+    try:
+        r = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC")
+        current_utc_time = r.json()["unixtime"]
+        local_time = int(time.time())
+        delta = current_utc_time - local_time
+        if abs(delta) > 5:
+            print(f"[INFO] Waktu lokal beda {delta} detik dari UTC.")
+            print("[INFO] Restart dyno agar waktu sinkron.")
+            exit(1)  # Restart dyno supaya waktu reset
+    except Exception as e:
+        print(f"[WARNING] Gagal sync waktu: {e}")
 
 logging.basicConfig(
     level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
