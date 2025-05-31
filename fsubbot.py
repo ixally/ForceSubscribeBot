@@ -1,10 +1,10 @@
-import Config
-import logging
+import asyncio
 import time
 import requests
-from pyrogram import Client, idle
-from pyrogram.errors import ApiIdInvalid, ApiIdPublishedFlood, AccessTokenInvalid
+from pyrogram import Client
+from pyrogram.errors import FloodWait
 
+app = Client("session")  # atau tambahin param lain sesuai bot kamu
 
 def sync_time():
     try:
@@ -12,38 +12,28 @@ def sync_time():
         current_utc_time = r.json()["unixtime"]
         local_time = int(time.time())
         delta = current_utc_time - local_time
-        if abs(delta) > 5:
-            print(f"[INFO] Waktu lokal beda {delta} detik dari UTC.")
-            print("[INFO] Restart dyno agar waktu sinkron.")
-            exit(1)  # Restart dyno supaya waktu reset
+        print(f"[INFO] Selisih waktu: {delta} detik")
+        return abs(delta) <= 5
     except Exception as e:
         print(f"[WARNING] Gagal sync waktu: {e}")
+        return False
 
-logging.basicConfig(
-    level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
+async def start_bot():
+    for attempt in range(5):  # coba maksimal 5 kali
+        if sync_time():
+            try:
+                await app.start()
+                print("✅ Bot berhasil start.")
+                await app.idle()
+                return
+            except Exception as e:
+                print(f"[ERROR] Gagal start Pyrogram: {e}")
+        else:
+            print(f"[WAIT] Waktu belum sinkron, coba lagi 5 detik... ({attempt+1}/5)")
+        await asyncio.sleep(5)
 
+    print("❌ Gagal sinkron waktu setelah 5 percobaan. Stop bot.")
+    exit(1)
 
-app = Client(
-    ":memory:",
-    api_id=Config.API_ID,
-    api_hash=Config.API_HASH,
-    bot_token=Config.BOT_TOKEN,
-    plugins=dict(root="ForceSubscribeBot"),
-)
-
-
-# Run Bot
 if __name__ == "__main__":
-    try:
-        app.start()
-    except (ApiIdInvalid, ApiIdPublishedFlood):
-        raise Exception("Your API_ID/API_HASH is not valid.")
-    except AccessTokenInvalid:
-        raise Exception("Your BOT_TOKEN is not valid.")
-    uname = app.get_me().username
-    print(f"@{uname} Started Successfully!")
-    idle()
-    app.stop()
-    print("Bot stopped. Alvida!")
+    asyncio.run(start_bot())
