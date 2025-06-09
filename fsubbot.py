@@ -1,16 +1,14 @@
 import Config
-import logging 
+import logging
 import asyncio
 import time
-import requests
+import aiohttp
 from pyrogram import Client, idle
-from pyrogram.errors import FloodWait, ApiIdInvalid, ApiIdPublishedFlood, AccessTokenInvalid
 
 logging.basicConfig(
     level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
-
 
 app = Client(
     ":memory:",
@@ -20,21 +18,23 @@ app = Client(
     plugins=dict(root="ForceSubscribeBot"),
 )
 
-def sync_time():
+async def sync_time():
     try:
-        r = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC")
-        current_utc_time = r.json()["unixtime"]
-        local_time = int(time.time())
-        delta = current_utc_time - local_time
-        print(f"[INFO] Selisih waktu: {delta} detik")
-        return abs(delta) <= 5
+        async with aiohttp.ClientSession() as session:
+            async with session.get("http://worldtimeapi.org/api/timezone/Etc/UTC") as r:
+                data = await r.json()
+                current_utc_time = data["unixtime"]
+                local_time = int(time.time())
+                delta = current_utc_time - local_time
+                print(f"[INFO] Selisih waktu: {delta} detik")
+                return abs(delta) <= 5
     except Exception as e:
         print(f"[WARNING] Gagal sync waktu: {e}")
         return False
 
 async def start_bot():
-    for attempt in range(5):  # coba maksimal 5 kali
-        if sync_time():
+    for attempt in range(5):
+        if await sync_time():
             try:
                 await app.start()
                 print("✅ Bot berhasil start.")
